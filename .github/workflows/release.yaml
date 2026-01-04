@@ -21,7 +21,7 @@ on:
 
 jobs:
   publish:
-    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.1.0
+    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@3a6e6cfba7f20806d57c943d7e7ee748159aa397
     with:
       tag_name: ${{ inputs.tag_name }}
       # GitHub repository which is a fork of the upstream where the Pull Request will be opened.
