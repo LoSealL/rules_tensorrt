@@ -14,11 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+def _print_or_fail(ctx, _msg):
+    if ctx.attr.required:
+        fail(_msg)
+    ctx.file("BUILD", """# tensorrt not found
+cc_library(
+    name = "tensorrt",
+    visibility = ["//visibility:public"],
+)
+""")
+    print("[WARNING] " + _msg)
+
 def _impl(ctx):
     # Prefer the tensorrt_root attribute; fall back to the TENSORRT_ROOT environment variable
     tensorrt_root = ctx.attr.tensorrt_root or ctx.os.environ.get("TENSORRT_ROOT", "")
     if not tensorrt_root or not ctx.path(tensorrt_root).exists:
-        fail("Either the 'tensorrt_root' attribute must be set, or the TENSORRT_ROOT environment variable must be defined.")
+        _print_or_fail(ctx, "Either the 'tensorrt_root' attribute must be set, or the TENSORRT_ROOT environment variable must be defined.")
+        return
 
     # Convert to an absolute path
     tensorrt_root = ctx.path(tensorrt_root)
@@ -29,9 +41,11 @@ def _impl(ctx):
     bin_path = tensorrt_root.get_child("bin")
 
     if not headers_path.exists:
-        fail("TensorRT headers not found at %s" % headers_path)
+        _print_or_fail(ctx, "TensorRT headers not found at %s" % headers_path)
+        return
     if not lib_path.exists:
-        fail("TensorRT libraries not found at %s" % lib_path)
+        _print_or_fail(ctx, "TensorRT libraries not found at %s" % lib_path)
+        return
 
     # Read version
     nvinfer_version = headers_path.get_child("NvInferVersion.h")
@@ -60,6 +74,7 @@ config_tensorrt = repository_rule(
         "tensorrt_root": attr.string(
             doc = "Path to the TensorRT installation root directory. If not provided, falls back to the TENSORRT_ROOT environment variable.",
         ),
+        "required": attr.bool(default = True, doc = "fail(warning) if (not) required"),
         "_build_file": attr.label(default = "//private/template:trt.tpl", allow_single_file = True),
     },
     environ = ["TENSORRT_ROOT"],
