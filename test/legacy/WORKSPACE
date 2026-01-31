@@ -9,6 +9,7 @@ load("@rules_tensorrt//:repo.bzl", "config_tensorrt")
 
 config_tensorrt(
     name = "tensorrt",
+    required = False,
 )
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")

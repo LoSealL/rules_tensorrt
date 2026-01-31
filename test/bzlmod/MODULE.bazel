@@ -1,5 +1,6 @@
 module(name = "test_bzlmod")
 
+bazel_dep(name = "rules_cc", version = "0.2.16")
 bazel_dep(name = "rules_tensorrt", version = "10.14.1")
 local_path_override(
     module_name = "rules_tensorrt",
@@ -7,4 +8,5 @@ local_path_override(
 )
 
 trt_ext = use_extension("@rules_tensorrt//:extensions.bzl", "tensorrt_extention")
+trt_ext.toolkit(required = False)
 use_repo(trt_ext, "tensorrt")
