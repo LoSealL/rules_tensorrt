@@ -26,27 +26,23 @@ trt_libs = [
 ]
 
 trt_builder_resources = [
-    "nvinfer_builder_resource_ptx",
-    "nvinfer_builder_resource_sm75",
-    "nvinfer_builder_resource_sm80",
-    "nvinfer_builder_resource_sm86",
-    "nvinfer_builder_resource_sm89",
-    "nvinfer_builder_resource_sm90",
-    "nvinfer_builder_resource_sm120",
+%{TENSORRT_BUILDER_RESOURCES}
 ]
 
-trt_lib_ver = %{TENSORRT_MAJOR_VERSION}
+trt_major = %{TENSORRT_MAJOR_VERSION}
+trt_minor = %{TENSORRT_MINOR_VERSION}
+trt_patch = %{TENSORRT_PATCH_VERSION}
 
 [cc_import(
     name = lib + "_win32",
-    interface_library = ":lib/{}_{}.lib".format(lib, trt_lib_ver),
-    shared_library = ":bin/{}_{}.dll".format(lib, trt_lib_ver),
+    interface_library = ":{}_{}.lib".format(lib, trt_major),
+    shared_library = ":{}_{}.dll".format(lib, trt_major),
     target_compatible_with = ["@platforms//os:windows"],
 ) for lib in trt_libs]
 
 [cc_import(
     name = lib + "_linux",
-    shared_library = ":lib/{}.so.{}".format(lib, trt_lib_ver),
+    shared_library = ":lib{}.so.{}".format(lib, trt_major),
     target_compatible_with = ["@platforms//os:linux"],
 ) for lib in trt_libs]
 
@@ -60,13 +56,13 @@ trt_lib_ver = %{TENSORRT_MAJOR_VERSION}
 
 [cc_import(
     name = lib + "_win32",
-    shared_library = ":bin/{}_{}.dll".format(lib, trt_lib_ver),
+    shared_library = ":{}_{}.dll".format(lib, trt_major),
     target_compatible_with = ["@platforms//os:windows"],
 ) for lib in trt_builder_resources]
 
 [cc_import(
     name = lib + "_linux",
-    shared_library = ":lib/{}.so.{}".format(lib, trt_lib_ver),
+    shared_library = ":lib{}.so.{}.{}.{}".format(lib, trt_major, trt_minor, trt_patch),
     target_compatible_with = ["@platforms//os:linux"],
 ) for lib in trt_builder_resources]
 
@@ -85,24 +81,10 @@ cc_library(
         "include/NvOnnxParser.h",
     ] + glob([
         "include/NvInfer*.h",
-        "include/impl/*.h",
     ]),
     includes = ["include"],
     visibility = ["//visibility:public"],
     deps = [
-        ":nvinfer",
-        ":nvinfer_builder_resource_ptx",
-        ":nvinfer_builder_resource_sm75",
-        ":nvinfer_builder_resource_sm80",
-        ":nvinfer_builder_resource_sm86",
-        ":nvinfer_builder_resource_sm89",
-        ":nvinfer_builder_resource_sm90",
-        ":nvinfer_builder_resource_sm120",
-        ":nvinfer_dispatch",
-        ":nvinfer_lean",
-        ":nvinfer_plugin",
-        ":nvinfer_vc_plugin",
-        ":nvonnxparser",
         "@rules_cuda//cuda:runtime",
-    ],
+    ] + trt_libs + trt_builder_resources,
 )
