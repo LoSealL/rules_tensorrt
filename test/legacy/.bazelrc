@@ -1,2 +1,2 @@
 startup --windows_enable_symlinks
-common --noenable_bzlmod
+common --noenable_bzlmod --enable_workspace

@@ -33,12 +33,12 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_cc/archive/refs/tags/%s.tar.gz" % rules_cc_version,
 )
 
-# Jan 4th 2026
-rules_cuda_revision = "bfea6eea03ea6acd174ab21ba6309d08d358d0d7"
+# Feb 6th 2026
+rules_cuda_revision = "6fa09c37b1f98c3ac0d5a3276269693cee16765b"
 
 http_archive(
     name = "rules_cuda",
-    integrity = "sha256-Zdphe+6WvAvQgllPus6j5S+cG1qGHtEbp+3ZzirleHw=",
+    integrity = "sha256-TDvRjaFY6pJFWWP4ZRAm+AlS7JvXF/T+Q3O0VH571BQ=",
     strip_prefix = "rules_cuda-%s" % rules_cuda_revision,
     urls = ["https://github.com/bazel-contrib/rules_cuda/archive/%s.tar.gz" % rules_cuda_revision],
 )
