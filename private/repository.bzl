@@ -59,7 +59,7 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 """)
-    print("[WARNING] " + _msg)
+    print("[WARNING] " + _msg)  # buildifier: disable=print
 
 def _read_trt_version(ctx, version_file):
     contents = ctx.read(version_file).splitlines()
@@ -126,13 +126,34 @@ def _mapping_libs(ctx, lib_path, bin_path, resources, versions):
     if missing_libs:
         fail("Missing following libraries: {}".format(",".join(missing_libs)))
 
+def _canonicalize_os_arch(ctx):
+    _arch_to_arch = {
+        "amd64": ["amd64", "x86_64"],
+        "x86_64": ["amd64", "x86_64"],
+        "aarch64": ["aarch64", "arm64"],
+        "arm64": ["aarch64", "arm64"],
+    }
+    if ctx.os.arch not in _arch_to_arch:
+        _print_or_fail(ctx, "unknown os architecture: %s" % ctx.os.arch)
+        return ctx.os.arch
+    if "linux" in ctx.os.name.lower():
+        for arch in _arch_to_arch[ctx.os.arch]:
+            headers_path = ctx.path("/usr/include/{}-linux-gnu".format(arch))
+            if headers_path.exists:
+                return arch
+        _print_or_fail(ctx, "can't determine linux os arch for %s" % ctx.os.arch)
+
+    # fallback
+    return ctx.os.arch
+
 def _impl(ctx):
     # Prefer the tensorrt_root attribute; fall back to the TENSORRT_ROOT environment variable
     tensorrt_root = ctx.attr.tensorrt_root or ctx.os.environ.get("TENSORRT_ROOT", "")
     if not tensorrt_root or not ctx.path(tensorrt_root).exists:
         if "linux" in ctx.os.name.lower():
-            headers_path = ctx.path("/usr/include/{}-linux-gnu".format(ctx.os.arch))
-            lib_path = ctx.path("/usr/lib/{}-linux-gnu".format(ctx.os.arch))
+            arch = _canonicalize_os_arch(ctx)
+            headers_path = ctx.path("/usr/include/{}-linux-gnu".format(arch))
+            lib_path = ctx.path("/usr/lib/{}-linux-gnu".format(arch))
             bin_path = lib_path
         else:
             _print_or_fail(ctx, "Either the 'tensorrt_root' attribute must be set, or the TENSORRT_ROOT environment variable must be defined.")
