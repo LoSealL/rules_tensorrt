@@ -16,6 +16,9 @@ limitations under the License.
 
 # bazel BUILD file for tensorrt headers and libs
 
+load("@rules_cc//cc:cc_import.bzl", "cc_import")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 trt_libs = [
     "nvinfer",
     "nvinfer_dispatch",

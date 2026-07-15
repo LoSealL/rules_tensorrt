@@ -69,44 +69,59 @@ def _read_trt_version(ctx, version_file):
         if line.startswith("#define") and len(line.split(" ")) > 2:
             _, key, value = line.strip().split(" ", 2)
             macros[key] = value
-    trt_major = macros.get("TRT_MAJOR_ENTERPRISE", 10)
-    trt_minor = macros.get("TRT_MINOR_ENTERPRISE", 0)
-    trt_patch = macros.get("TRT_PATCH_ENTERPRISE", 0)
-    return (trt_major, trt_minor, trt_patch)
 
-def _find_builder_resources(ctx, lib_path, versions):
+    # Resolve macro value that may reference another macro (e.g. TRT 11's
+    # NV_TENSORRT_MAJOR = TRT_MAJOR_ENTERPRISE). Works for both TRT 10 and 11.
+    def _resolve(macro_name):
+        val = macros.get(macro_name)
+        if val != None:
+            val = val.split(" ")[0]  # strip trailing comments e.g. "//!< ..."
+        if val in macros:
+            val = macros[val].split(" ")[0]
+        return int(val) if val and val.lstrip("-").isdigit() else None
+
+    return (
+        _resolve("NV_TENSORRT_MAJOR") or 0,
+        _resolve("NV_TENSORRT_MINOR") or 0,
+        _resolve("NV_TENSORRT_PATCH") or 0,
+    )
+
+def _find_file(ctx, search_paths, filename):
+    for p in search_paths:
+        f = p.get_child(filename)
+        if f.exists:
+            return f
+    return None
+
+def _find_builder_resources(ctx, search_paths, versions):
     resources_found = []
     major, minor, patch = versions
     for res in TRT_BUILDER_RESOURCES:
         if "windows" in ctx.os.name.lower():
-            res_file = lib_path.get_child("{}_{}.dll".format(res, major))
+            res_file = _find_file(ctx, search_paths, "{}_{}.dll".format(res, major))
         elif "linux" in ctx.os.name.lower():
-            res_file = lib_path.get_child("lib{}.so.{}.{}.{}".format(res, major, minor, patch))
+            res_file = _find_file(ctx, search_paths, "lib{}.so.{}.{}.{}".format(res, major, minor, patch))
         else:
             fail("MacOS is not supported!")
-        if res_file.exists:
+        if res_file:
             resources_found.append(res)
     return resources_found
 
 def _mapping_headers(ctx, headers_path):
-    missing_headers = []
     for hdr in TRT_HEADERS:
         header_file = headers_path.get_child(hdr)
         if header_file.exists:
             ctx.symlink(header_file, "include/" + hdr)
-        else:
-            missing_headers.append(hdr)
-    if missing_headers:
-        fail("Missing following headers: {}".format(",".join(missing_headers)))
 
-def _mapping_libs(ctx, lib_path, bin_path, resources, versions):
+def _mapping_libs(ctx, lib_path, search_paths, resources, versions):
     missing_libs = []
     major, minor, patch = versions
     for lib in resources:
         if "windows" in ctx.os.name.lower():
-            dll_file = bin_path.get_child("{}_{}.dll".format(lib, major))
+            # TRT 10 puts DLLs in lib/; TRT 11 puts them in bin/. Search both.
+            dll_file = _find_file(ctx, search_paths, "{}_{}.dll".format(lib, major))
             lib_file = lib_path.get_child("{}_{}.lib".format(lib, major))
-            if dll_file.exists:
+            if dll_file:
                 ctx.symlink(dll_file, dll_file.basename)
             else:
                 missing_libs.append(lib)
@@ -178,20 +193,23 @@ def _impl(ctx):
     nvinfer_version = headers_path.get_child("NvInferVersion.h")
     versions = _read_trt_version(ctx, nvinfer_version)
     trt_major, trt_minor, trt_patch = versions
-    builder_resources = _find_builder_resources(ctx, bin_path, versions)
+
+    # TRT 10 puts DLLs in lib/; TRT 11 puts DLLs in bin/. Search both.
+    search_paths = [bin_path, lib_path]
+    builder_resources = _find_builder_resources(ctx, search_paths, versions)
 
     # link headers and libraries
     _mapping_headers(ctx, headers_path)
-    _mapping_libs(ctx, lib_path, bin_path, builder_resources + TRT_LIBS, versions)
+    _mapping_libs(ctx, lib_path, search_paths, builder_resources + TRT_LIBS, versions)
 
     # Generate the BUILD file content
     ctx.template(
         "BUILD.bazel",
         ctx.attr._build_file,
-        {
-            "%{TENSORRT_MAJOR_VERSION}": trt_major,
-            "%{TENSORRT_MINOR_VERSION}": trt_minor,
-            "%{TENSORRT_PATCH_VERSION}": trt_patch,
+        substitutions = {
+            "%{TENSORRT_MAJOR_VERSION}": str(trt_major),
+            "%{TENSORRT_MINOR_VERSION}": str(trt_minor),
+            "%{TENSORRT_PATCH_VERSION}": str(trt_patch),
             "%{TENSORRT_BUILDER_RESOURCES}": ",\n".join(['"' + r + '"' for r in builder_resources]),
         },
     )
