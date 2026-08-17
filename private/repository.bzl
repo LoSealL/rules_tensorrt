@@ -14,22 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-TRT_HEADERS = [
-    "NvInfer.h",
-    "NvInferImpl.h",
-    "NvInferLegacyDims.h",
-    "NvInferPlugin.h",
-    "NvInferPluginBase.h",
-    "NvInferPluginUtils.h",
-    "NvInferRuntime.h",
-    "NvInferRuntimeBase.h",
-    "NvInferRuntimeCommon.h",
-    "NvInferRuntimePlugin.h",
-    "NvInferVersion.h",
-    "NvOnnxConfig.h",
-    "NvOnnxParser.h",
-]
-
 TRT_BUILDER_RESOURCES = [
     "nvinfer_builder_resource",
     "nvinfer_builder_resource_ptx",
@@ -108,10 +92,10 @@ def _find_builder_resources(ctx, search_paths, versions):
     return resources_found
 
 def _mapping_headers(ctx, headers_path):
-    for hdr in TRT_HEADERS:
-        header_file = headers_path.get_child(hdr)
-        if header_file.exists:
-            ctx.symlink(header_file, "include/" + hdr)
+    for header_file in headers_path.readdir():
+        name = header_file.basename
+        if name.startswith("Nv") and name.endswith(".h"):
+            ctx.symlink(header_file, "include/" + name)
 
 def _mapping_libs(ctx, lib_path, search_paths, resources, versions):
     missing_libs = []
