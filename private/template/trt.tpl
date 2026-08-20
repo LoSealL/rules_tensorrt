@@ -50,8 +50,11 @@ trt_patch = %{TENSORRT_PATCH_VERSION}
 ) for lib in trt_libs]
 
 [cc_library(
-    name = lib,
-    deps = select({
+    name = lib,  # allow to link library individually
+    hdrs = glob(["include/NvInfer*.h"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+    deps = ["@rules_cuda//cuda:runtime"] + select({
         "@platforms//os:windows": [":{}_win32".format(lib)],
         "//conditions:default": [":{}_linux".format(lib)],
     }),
